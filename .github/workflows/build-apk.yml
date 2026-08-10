@@ -1,1 +1,96 @@
+name: Build NM Smart Launcher APK
 
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
+          yes | sdkmanager --licenses || true
+
+      - name: Find and extract launcher project
+        run: |
+          ZIP=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: Project ZIP file not found."
+            exit 1
+          fi
+
+          echo "Found project: $ZIP"
+
+          mkdir -p launcher-project
+
+          unzip -o "$ZIP" -d launcher-project
+
+          echo "Extracted files:"
+          find launcher-project -maxdepth 3 -type f | head -100
+
+      - name: Locate Android project
+        run: |
+          if [ -f "launcher-project/settings.gradle.kts" ]; then
+            echo "PROJECT_DIR=launcher-project" >> "$GITHUB_ENV"
+          else
+            PROJECT=$(find launcher-project -name "settings.gradle.kts" -type f | head -n 1)
+
+            if [ -z "$PROJECT" ]; then
+              echo "ERROR: settings.gradle.kts not found."
+              exit 1
+            fi
+
+            DIR=$(dirname "$PROJECT")
+            echo "PROJECT_DIR=$DIR" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Debug APK
+        run: |
+          cd "$PROJECT_DIR"
+
+          gradle \
+            --no-daemon \
+            --stacktrace \
+            assembleDebug
+
+      - name: Find APK
+        run: |
+          APK=$(find "$PROJECT_DIR" -type f -name "*.apk" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK was not created."
+            exit 1
+          fi
+
+          echo "APK found:"
+          echo "$APK"
+
+          mkdir -p "$GITHUB_WORKSPACE/output"
+
+          cp "$APK" "$GITHUB_WORKSPACE/output/NM-Smart-Launcher.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NM-Smart-Launcher-APK
+          path: output/NM-Smart-Launcher.apk
+          if-no-files-found: error
