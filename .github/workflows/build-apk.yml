@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       # --------------------------------------------------
-      # 2. Install Java 17 (Cache removed to fix the error)
+      # 2. Install Java 17
       # --------------------------------------------------
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -120,18 +120,18 @@ jobs:
             || true
 
       # --------------------------------------------------
-      # 8. Make sure Gradle wrapper is executable
+      # 8. Prepare Gradle wrapper (Updated to generate if missing)
       # --------------------------------------------------
       - name: Prepare Gradle wrapper
         run: |
           cd "$PROJECT_DIR"
 
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
-          else
-            echo "Gradle wrapper not found."
-            exit 1
+          if [ ! -f "./gradlew" ]; then
+            echo "Gradle wrapper not found. Generating a new one..."
+            gradle wrapper
           fi
+          
+          chmod +x ./gradlew
 
       # --------------------------------------------------
       # 9. Clean previous build
