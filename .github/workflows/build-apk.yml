@@ -1,4 +1,4 @@
-name: Build NM Smart Launcher APK
+Build NM Smart Launcher APK
 
 on:
   workflow_dispatch:
